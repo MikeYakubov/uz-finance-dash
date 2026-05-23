@@ -31,16 +31,16 @@ export async function GET(request: Request) {
 
   const writes: Promise<unknown>[] = [];
   if (ratesResult.status === "fulfilled" && ratesResult.value.length > 0) {
-    writes.push(supabase.from("exchange_rates").upsert(ratesResult.value, { onConflict: "as_of_date,code" }));
+    writes.push(Promise.resolve(supabase.from("exchange_rates").upsert(ratesResult.value, { onConflict: "as_of_date,code" })));
   }
   if (goldResult.status === "fulfilled" && goldResult.value.length > 0) {
-    writes.push(supabase.from("gold_prices").upsert(goldResult.value, { onConflict: "as_of_date,weight_grams" }));
+    writes.push(Promise.resolve(supabase.from("gold_prices").upsert(goldResult.value, { onConflict: "as_of_date,weight_grams" })));
   }
   if (policyResult.status === "fulfilled" && policyResult.value) {
-    writes.push(supabase.from("policy_rates").upsert(policyResult.value, { onConflict: "as_of_date" }));
+    writes.push(Promise.resolve(supabase.from("policy_rates").upsert(policyResult.value, { onConflict: "as_of_date" })));
   }
   if (publicationsResult.status === "fulfilled" && publicationsResult.value.length > 0) {
-    writes.push(supabase.from("cbu_publications").upsert(publicationsResult.value, { onConflict: "url" }));
+    writes.push(Promise.resolve(supabase.from("cbu_publications").upsert(publicationsResult.value, { onConflict: "url" })));
   }
 
   const writeResults = await Promise.allSettled(writes);
