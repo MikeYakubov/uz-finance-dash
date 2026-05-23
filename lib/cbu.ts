@@ -31,9 +31,9 @@ export type ExchangeRateRecord = {
 export type GoldPriceRecord = {
   as_of_date: string;
   weight_grams: number;
-  sell_price_uzs: number | null;
-  buyback_intact_uzs: number | null;
-  buyback_damaged_uzs: number | null;
+  sell_price_uzs: number;
+  buyback_intact_uzs: number;
+  buyback_damaged_uzs: number;
   source_url: string;
   raw: Record<string, unknown>;
 };
@@ -101,32 +101,49 @@ export async function fetchGoldPrices(): Promise<GoldPriceRecord[]> {
       const joined = cells.join(" ");
       const weight = parseUzs(joined.match(/(\d+)\s*grams/i)?.[1]);
       if (!weight) return null;
+
       const prices = cells.map(parseUzs).filter((value): value is number => value !== null && value > 1000);
-      if (prices.length < 3) return null;
-      return {
+      const sellPrice = prices[0];
+      const buybackIntact = prices[1];
+      const buybackDamaged = prices[2];
+      if (sellPrice === undefined || buybackIntact === undefined || buybackDamaged === undefined) return null;
+
+      const record: GoldPriceRecord = {
         as_of_date: asOfDate,
         weight_grams: weight,
-        sell_price_uzs: prices[0],
-        buyback_intact_uzs: prices[1],
-        buyback_damaged_uzs: prices[2],
+        sell_price_uzs: sellPrice,
+        buyback_intact_uzs: buybackIntact,
+        buyback_damaged_uzs: buybackDamaged,
         source_url: CBU_GOLD_URL,
         raw: { cells }
       };
+      return record;
     })
-    .filter((row): row is GoldPriceRecord => Boolean(row));
+    .filter((row): row is GoldPriceRecord => row !== null);
 
   if (fromTable.length > 0) return fromTable;
 
   const regex = /(\d+)\s+grams\s+([\d\s]+)\s+uzs\s+([\d\s]+)\s+uzs\s+([\d\s]+)\s+uzs/gi;
-  return [...text.matchAll(regex)].map((match) => ({
-    as_of_date: asOfDate,
-    weight_grams: parseUzs(match[1]) ?? 0,
-    sell_price_uzs: parseUzs(match[2]),
-    buyback_intact_uzs: parseUzs(match[3]),
-    buyback_damaged_uzs: parseUzs(match[4]),
-    source_url: CBU_GOLD_URL,
-    raw: { match: match[0] }
-  }));
+  return [...text.matchAll(regex)].flatMap((match) => {
+    const weight = parseUzs(match[1]);
+    const sellPrice = parseUzs(match[2]);
+    const buybackIntact = parseUzs(match[3]);
+    const buybackDamaged = parseUzs(match[4]);
+
+    if (!weight || sellPrice === null || buybackIntact === null || buybackDamaged === null) return [];
+
+    return [
+      {
+        as_of_date: asOfDate,
+        weight_grams: weight,
+        sell_price_uzs: sellPrice,
+        buyback_intact_uzs: buybackIntact,
+        buyback_damaged_uzs: buybackDamaged,
+        source_url: CBU_GOLD_URL,
+        raw: { match: match[0] }
+      }
+    ];
+  });
 }
 
 function excelDateToIso(value: unknown) {
