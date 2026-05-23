@@ -52,7 +52,7 @@ function normalizeRssItems(xml: string, source: string): NewsItem[] {
 
   return items.slice(0, 20).map((item: any) => {
     const link = typeof item.link === "string" ? item.link : item.link?.href;
-    return {
+    const record: NewsItem = {
       title: String(item.title ?? "").replace(/\s+/g, " ").trim(),
       url: String(link ?? item.guid ?? ""),
       source,
@@ -60,6 +60,7 @@ function normalizeRssItems(xml: string, source: string): NewsItem[] {
       summary: String(item.description ?? item.summary ?? "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim() || null,
       relevance: "fallback"
     };
+    return record;
   });
 }
 
