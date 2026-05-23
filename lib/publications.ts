@@ -20,15 +20,26 @@ async function fetchHtml(url: string) {
 
 function extractPdfLinks(html: string, baseUrl: string, section: string): CbuPublication[] {
   const $ = cheerio.load(html);
-  return $("a[href*='.pdf']")
-    .map((_, link) => {
-      const href = $(link).attr("href");
-      if (!href) return null;
-      const title = $(link).text().replace(/\s+/g, " ").trim() || $(link).closest("article, li, .news, .item").text().replace(/\s+/g, " ").trim() || "CBU PDF publication";
-      return { title: title.slice(0, 240), url: new URL(href, baseUrl).toString(), section, published_at: null };
-    })
-    .get()
-    .filter((item): item is CbuPublication => Boolean(item));
+  const publications: CbuPublication[] = [];
+
+  $("a[href*='.pdf']").each((_, link) => {
+    const href = $(link).attr("href");
+    if (!href) return;
+
+    const title =
+      $(link).text().replace(/\s+/g, " ").trim() ||
+      $(link).closest("article, li, .news, .item").text().replace(/\s+/g, " ").trim() ||
+      "CBU PDF publication";
+
+    publications.push({
+      title: title.slice(0, 240),
+      url: new URL(href, baseUrl).toString(),
+      section,
+      published_at: null
+    });
+  });
+
+  return publications;
 }
 
 export async function fetchCbuPublications() {
