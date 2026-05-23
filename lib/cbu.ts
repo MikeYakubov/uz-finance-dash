@@ -86,15 +86,15 @@ export async function fetchGoldPrices(): Promise<GoldPriceRecord[]> {
   const updateMatch = text.match(/Update date:\s*([0-9A-Za-z ,:.]+)/);
   const asOfDate = normalizeDateToIso(updateMatch?.[1], tashkentTodayIso());
 
-  const tableRows = $("tr")
-    .map((_, row) =>
-      $(row)
-        .find("td, th")
-        .map((__, cell) => $(cell).text().replace(/\s+/g, " ").trim())
-        .get()
-    )
-    .get()
-    .filter((row): row is string[] => Array.isArray(row) && row.some(Boolean));
+  const tableRows: string[][] = [];
+  $("tr").each((_, row) => {
+    const cells = $(row)
+      .find("td, th")
+      .map((__, cell) => $(cell).text().replace(/\s+/g, " ").trim())
+      .get();
+
+    if (cells.some(Boolean)) tableRows.push(cells);
+  });
 
   const fromTable = tableRows
     .map((cells) => {
