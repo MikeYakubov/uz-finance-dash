@@ -96,54 +96,58 @@ export async function fetchGoldPrices(): Promise<GoldPriceRecord[]> {
     if (cells.some(Boolean)) tableRows.push(cells);
   });
 
-  const fromTable = tableRows
-    .map((cells) => {
-      const joined = cells.join(" ");
-      const weight = parseUzs(joined.match(/(\d+)\s*grams/i)?.[1]);
-      if (!weight) return null;
+  const fromTable: GoldPriceRecord[] = [];
+  for (const cells of tableRows) {
+    const joined = cells.join(" ");
+    const weight = parseUzs(joined.match(/(\d+)\s*grams/i)?.[1]);
+    if (!weight) continue;
 
-      const prices = cells.map(parseUzs).filter((value): value is number => value !== null && value > 1000);
-      const sellPrice = prices[0];
-      const buybackIntact = prices[1];
-      const buybackDamaged = prices[2];
-      if (sellPrice === undefined || buybackIntact === undefined || buybackDamaged === undefined) return null;
+    const prices: number[] = [];
+    for (const cell of cells) {
+      const parsed = parseUzs(cell);
+      if (parsed !== null && parsed > 1000) prices.push(parsed);
+    }
 
-      const record: GoldPriceRecord = {
-        as_of_date: asOfDate,
-        weight_grams: weight,
-        sell_price_uzs: sellPrice,
-        buyback_intact_uzs: buybackIntact,
-        buyback_damaged_uzs: buybackDamaged,
-        source_url: CBU_GOLD_URL,
-        raw: { cells }
-      };
-      return record;
-    })
-    .filter((row): row is GoldPriceRecord => row !== null);
+    const sellPrice = prices[0];
+    const buybackIntact = prices[1];
+    const buybackDamaged = prices[2];
+    if (sellPrice === undefined || buybackIntact === undefined || buybackDamaged === undefined) continue;
+
+    fromTable.push({
+      as_of_date: asOfDate,
+      weight_grams: weight,
+      sell_price_uzs: sellPrice,
+      buyback_intact_uzs: buybackIntact,
+      buyback_damaged_uzs: buybackDamaged,
+      source_url: CBU_GOLD_URL,
+      raw: { cells }
+    });
+  }
 
   if (fromTable.length > 0) return fromTable;
 
   const regex = /(\d+)\s+grams\s+([\d\s]+)\s+uzs\s+([\d\s]+)\s+uzs\s+([\d\s]+)\s+uzs/gi;
-  return [...text.matchAll(regex)].flatMap((match) => {
+  const fromText: GoldPriceRecord[] = [];
+  for (const match of text.matchAll(regex)) {
     const weight = parseUzs(match[1]);
     const sellPrice = parseUzs(match[2]);
     const buybackIntact = parseUzs(match[3]);
     const buybackDamaged = parseUzs(match[4]);
 
-    if (!weight || sellPrice === null || buybackIntact === null || buybackDamaged === null) return [];
+    if (!weight || sellPrice === null || buybackIntact === null || buybackDamaged === null) continue;
 
-    return [
-      {
-        as_of_date: asOfDate,
-        weight_grams: weight,
-        sell_price_uzs: sellPrice,
-        buyback_intact_uzs: buybackIntact,
-        buyback_damaged_uzs: buybackDamaged,
-        source_url: CBU_GOLD_URL,
-        raw: { match: match[0] }
-      }
-    ];
-  });
+    fromText.push({
+      as_of_date: asOfDate,
+      weight_grams: weight,
+      sell_price_uzs: sellPrice,
+      buyback_intact_uzs: buybackIntact,
+      buyback_damaged_uzs: buybackDamaged,
+      source_url: CBU_GOLD_URL,
+      raw: { match: match[0] }
+    });
+  }
+
+  return fromText;
 }
 
 function excelDateToIso(value: unknown) {
@@ -171,13 +175,14 @@ export async function fetchPolicyRate(): Promise<PolicyRateRecord | null> {
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
-      const candidates = rows
-        .map((row) => {
-          const date = row.map(excelDateToIso).find(Boolean);
-          const rate = row.map(parseNumber).find((value): value is number => value !== null && value > 0 && value < 100);
-          return date && rate ? { date, rate, row } : null;
-        })
-        .filter((row): row is { date: string; rate: number; row: unknown[] } => Boolean(row));
+      const candidates: { date: string; rate: number; row: unknown[] }[] = [];
+
+      for (const row of rows) {
+        const date = row.map(excelDateToIso).find(Boolean);
+        const rate = row.map(parseNumber).find((value) => value !== null && value > 0 && value < 100);
+        if (date && rate !== undefined && rate !== null) candidates.push({ date, rate, row });
+      }
+
       const latest = candidates.at(-1);
       if (latest) return { as_of_date: latest.date, value_percent: latest.rate, source_url: sourceUrl, raw: { row: latest.row } };
     }
