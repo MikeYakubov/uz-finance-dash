@@ -67,16 +67,24 @@ async function scrapeKunFinance(): Promise<NewsItem[]> {
   const url = "https://kun.uz/news/category/iqtisodiyot";
   const html = await fetchText(url);
   const $ = cheerio.load(html);
-  return $("a")
-    .map((_, link) => {
-      const href = $(link).attr("href");
-      const title = $(link).text().replace(/\s+/g, " ").trim();
-      if (!href || title.length < 20 || !href.includes("/news/")) return null;
-      return { title, url: new URL(href, "https://kun.uz").toString(), source: "Kun.uz Finance", publishedAt: null, summary: null, relevance: "fallback" as const };
-    })
-    .get()
-    .filter((item): item is NewsItem => Boolean(item))
-    .slice(0, 20);
+  const items: NewsItem[] = [];
+
+  $("a").each((_, link) => {
+    const href = $(link).attr("href");
+    const title = $(link).text().replace(/\s+/g, " ").trim();
+    if (!href || title.length < 20 || !href.includes("/news/")) return;
+
+    items.push({
+      title,
+      url: new URL(href, "https://kun.uz").toString(),
+      source: "Kun.uz Finance",
+      publishedAt: null,
+      summary: null,
+      relevance: "fallback"
+    });
+  });
+
+  return items.slice(0, 20);
 }
 
 function keywordFilter(items: NewsItem[]) {
