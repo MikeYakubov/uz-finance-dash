@@ -47,3 +47,5 @@ vercel.json                   Daily 09:00 Tashkent cron schedule
 8. Open `Settings` -> `Cron Jobs` and confirm `/api/fetch-rates` is listed.
 
 Vercel cron schedules are UTC. `0 4 * * *` runs at 09:00 in Tashkent.
+
+Last deployment trigger: 2026-05-23.
